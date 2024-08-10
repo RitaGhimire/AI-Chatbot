@@ -15,8 +15,7 @@ export async function POST(req) {
     console.log("POST request received"); // Debug: Indicate that the POST request was received
 
     const openai = new OpenAI({
-        // apiKey: process.env.OPENAI_API_KEY, // Make sure to use the correct API key
-        // apiKey: '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',
+        apiKey: process.env.OPENAI_API_KEY,
     });
 
     let data;
