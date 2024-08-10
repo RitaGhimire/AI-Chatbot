@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server"; //two libraries for our one response AI
+import { NextResponse } from "next/server";
 import OpenAI from "openai";
+
 const systemPrompt = `You are an AI-powered customer support assistant for HeadStartAI, a platform that provides AI-driven interviews for software development to do ai power interviews for swe jobs'
 HeadStarter AI offers AI-powered interviews for software engineering positions
 Our platform helps candidates practice and prepare for real job interviews.
@@ -7,46 +8,66 @@ We cover a wide range of topics including algorithms, data structures, system de
 Users can access our services through our website or mobile app'
 If asked about technical issues, guide users to our troubleshooting page or suggest contacting our technical support team
 Always maintain user privacy and do not share personal information
-If youre unsure about any information, its okay to say you dont know and offer to connect the user with a human representative
-Your goal is to provide accurate information, assist with common inquiries, and ensure a positive experience for all HeadStartAI users.`
+If you're unsure about any information, it's okay to say you don't know and offer to connect the user with a human representative
+Your goal is to provide accurate information, assist with common inquiries, and ensure a positive experience for all HeadStartAI users.`;
 
-export async function POST(req){ //FUNCTION FOR ONE ROUTED REQUEST
-    const openai = new OpenAI() //this is declaring openAI
-    const data = await req.json() //this is trying to get the json data from your request
-    const completion = await openai.chat.completions.create({ //chat completion from your request
-        messages: [ //the await function is there so it doesn't block your code while you're waiting, multiple requests can be sent at the same time.
-            {
-            role: 'system', //putting system prompt for messages
-            content: systemPrompt,
-        },
-        ...data, //await pachi you finally get your data
-    ],
-    model: 'gpt-4o-mini', //used a gpt model and streamed it.
-    stream: true,
-     })
-     //outputting the response using stream response
+export async function POST(req) {
+    console.log("POST request received"); // Debug: Indicate that the POST request was received
+
+    const openai = new OpenAI({
+        // apiKey: process.env.OPENAI_API_KEY, // Make sure to use the correct API key
+        apiKey: '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',
+    });
+
+    let data;
+    try {
+        data = await req.json(); // Get the JSON data from the request
+        console.log("Request JSON data:", data); // Debug: Log the received data
+    } catch (err) {
+        console.error("Failed to parse JSON from request:", err); // Debug: Log any errors while parsing JSON
+        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
+    let completion;
+    try {
+        completion = await openai.chat.completions.create({
+            messages: [
+                {
+                    role: 'system',
+                    content: systemPrompt,
+                },
+                ...data, // Append user messages
+            ],
+            model: 'gpt-4o-mini',
+            stream: true,
+        });
+        console.log("OpenAI completion response received"); // Debug: Indicate that the completion response was received
+    } catch (err) {
+        console.error("Failed to get completion from OpenAI:", err); // Debug: Log any errors from OpenAI
+        return NextResponse.json({ error: "OpenAI request failed" }, { status: 500 });
+    }
+
     const stream = new ReadableStream({
-    async startTransition(controller){ //initiates the stream
-        const encoder = new TextDecoder()
-        try{
-            for await(const chunk of completion){ //waits for every chunks that completion sends, openAI sends completion as chuncks
-                const content = chunk.choices[0]?.delta?.content //extracting every content from chunks
-                if (content){
-                    const text = encoder.encode(content) //if we have the content 
-                    controller.enqueue(text) // sent it to controller
+        async start(controller) {
+            const encoder = new TextEncoder();
+            try {
+                for await (const chunk of completion) {
+                    const content = chunk.choices[0]?.delta?.content;
+                    if (content) {
+                        console.log("Chunk content:", content); // Debug: Log each chunk of content
+                        const text = encoder.encode(content);
+                        controller.enqueue(text); // Send content to the stream
+                    }
                 }
-
-            }
-        }
-        catch(err){
-            controller.error(err)
-         } finally{
-controller.close()
+            } catch (err) {
+                console.error("Stream error:", err); // Debug: Log any errors during streaming
+                controller.error(err);
+            } finally {
+                controller.close();
             }
         },
-    })
-    return new NextResponse(stream) //returning the stream
+    });
+
+    console.log("Returning streaming response"); // Debug: Indicate that the stream is being returned
+    return new NextResponse(stream);
 }
-
-
-
