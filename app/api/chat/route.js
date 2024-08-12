@@ -39,7 +39,7 @@ export async function POST(req) {
                 },
                 ...data,
             ],
-            model: 'gpt-3.5-turbo', // Ensure correct model usage
+            model: 'gpt-4o-mini', // Ensure correct model usage
             stream: true,
         });
         console.log("OpenAI completion response received");
